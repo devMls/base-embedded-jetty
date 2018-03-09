@@ -4,14 +4,12 @@ javalite activeweb in a embedded jetty example
 
 global.properties needed in resources/app_config with this parameters:
 
-# jetty app properties
 startPort = 8003
 stopPort = 8004
 contextPath=/
 dispacher.path=/*
 dispacher.exclusions=css,images,js,ico,woff,svg,png
 dispacher.root_controller=home
-# database properties
 dataSource.JdbcUrl=
 dataSource.setUsername=
 dataSource.setPassword=
