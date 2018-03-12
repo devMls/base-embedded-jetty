@@ -1,4 +1,4 @@
-# base_embedded_jetty
+# base embedded jetty
 javalite activeweb in a embedded jetty example
 
 
