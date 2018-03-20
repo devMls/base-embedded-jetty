@@ -25,6 +25,7 @@ import org.eclipse.jetty.server.session.SessionHandler;
 import org.eclipse.jetty.servlet.FilterHolder;
 import org.eclipse.jetty.webapp.WebAppContext;
 import static org.javalite.app_config.AppConfig.p;
+import java.net.InetAddress;
 
 public class JettyServer {
 
@@ -116,6 +117,11 @@ public class JettyServer {
         //session in database
         final DefaultSessionIdManager idmgr = new DefaultSessionIdManager(server);
         idmgr.setServer(server);
+          try {
+        idmgr.setWorkerName(InetAddress.getLocalHost().getHostAddress());
+                   } catch (Exception ex) {
+            ex.printStackTrace();
+        }
         server.setSessionIdManager(idmgr);
         JDBCSessionDataStore sessionStore = new JDBCSessionDataStore();
         DatabaseAdaptor databaseAdaptor = new DatabaseAdaptor();
@@ -138,7 +144,7 @@ public class JettyServer {
         if (webAppDir == null) {
             throw new RuntimeException(String.format("No directory was found into the JAR file"));
         }
-        try {
+          try {
             appHandler.setResourceBase(webAppDir.toURI().toString());
         } catch (URISyntaxException ex) {
             ex.printStackTrace();
