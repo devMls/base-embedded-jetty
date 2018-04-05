@@ -32,15 +32,26 @@ public class JettyServer {
     private static org.eclipse.jetty.server.Server server;
     public static HikariDataSource dataSource;
 
+    public static int TIME_TO_STOP = 3000;
+    
     public static void main(String[] args) throws Exception {
 
         if (args.length > 0 && args[0].equalsIgnoreCase("stop")) {
             stop();
-        } else {
+        } else if (args.length > 0 && args[0].equalsIgnoreCase("restart")) {
+            restart();
+        }  else {
             start();
         }
     }
 
+    private static void restart(){
+        stop();
+        Thread.sleep(TIME_TO_STOP+2000);
+        start();
+    
+    }
+    
     private static void stop() {
 
         try {
@@ -82,7 +93,7 @@ public class JettyServer {
         statsHandler.setHandler(collection);
 
         server.setHandler(statsHandler);
-        server.setStopTimeout(3000);
+        server.setStopTimeout(TIME_TO_STOP);
         server.setStopAtShutdown(true);
 
         try {
