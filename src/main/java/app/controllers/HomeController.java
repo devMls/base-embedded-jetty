@@ -1,9 +1,8 @@
 package app.controllers;
 
-import org.javalite.activeweb.AppController;
 
 
-public class HomeController extends AppController {
+public class HomeController extends ControllerGenerico {
 
     public void index() {
 
