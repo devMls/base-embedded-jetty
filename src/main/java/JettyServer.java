@@ -27,31 +27,36 @@ import org.eclipse.jetty.webapp.WebAppContext;
 import static org.javalite.app_config.AppConfig.p;
 import java.net.InetAddress;
 
+
 public class JettyServer {
 
     private static org.eclipse.jetty.server.Server server;
     public static HikariDataSource dataSource;
 
     public static int TIME_TO_STOP = 3000;
-    
+
     public static void main(String[] args) throws Exception {
 
         if (args.length > 0 && args[0].equalsIgnoreCase("stop")) {
             stop();
         } else if (args.length > 0 && args[0].equalsIgnoreCase("restart")) {
             restart();
-        }  else {
+        } else {
             start();
         }
     }
 
-    private static void restart(){
+    private static void restart() {
         stop();
-        Thread.sleep(TIME_TO_STOP+2000);
+        try {
+            Thread.sleep(TIME_TO_STOP + 2000);
+        } catch (InterruptedException ex) {
+            ex.printStackTrace();
+        }
         start();
-    
+
     }
-    
+
     private static void stop() {
 
         try {
@@ -73,7 +78,7 @@ public class JettyServer {
         server = new org.eclipse.jetty.server.Server();
 
         configureDatabase();
-        
+
         createConnectors();
 
         WebAppContext appHandler = crateAppHandler();
@@ -128,9 +133,9 @@ public class JettyServer {
         //session in database
         final DefaultSessionIdManager idmgr = new DefaultSessionIdManager(server);
         idmgr.setServer(server);
-          try {
-        idmgr.setWorkerName(InetAddress.getLocalHost().getHostAddress());
-                   } catch (Exception ex) {
+        try {
+            idmgr.setWorkerName(InetAddress.getLocalHost().getHostAddress());
+        } catch (Exception ex) {
             ex.printStackTrace();
         }
         server.setSessionIdManager(idmgr);
@@ -155,7 +160,7 @@ public class JettyServer {
         if (webAppDir == null) {
             throw new RuntimeException(String.format("No directory was found into the JAR file"));
         }
-          try {
+        try {
             appHandler.setResourceBase(webAppDir.toURI().toString());
         } catch (URISyntaxException ex) {
             ex.printStackTrace();
@@ -187,7 +192,7 @@ public class JettyServer {
     }
 
     private static void configureDatabase() {
-        
+
         //database access
         HikariConfig config = new HikariConfig();
         config.setJdbcUrl(p("dataSource.JdbcUrl"));
@@ -204,7 +209,7 @@ public class JettyServer {
         config.addDataSourceProperty("cacheServerConfiguration", p("dataSource.cacheServerConfiguration"));
         config.addDataSourceProperty("elideSetAutoCommits", p("dataSource.elideSetAutoCommits"));
         config.addDataSourceProperty("maintainTimeStats", p("dataSource.maintainTimeStats"));
-                                
+
         dataSource = new HikariDataSource(config);
     }
 }
