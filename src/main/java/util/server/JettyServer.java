@@ -1,4 +1,6 @@
+package util.server;
 
+import app.config.DbConfig;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import java.io.IOException;
@@ -26,9 +28,12 @@ import org.eclipse.jetty.servlet.FilterHolder;
 import org.eclipse.jetty.webapp.WebAppContext;
 import static org.javalite.app_config.AppConfig.p;
 import java.net.InetAddress;
-
+import org.apache.shiro.web.env.EnvironmentLoaderListener;
+import util.server.FiltersSpecial.InitAndStopListener;
 
 public class JettyServer {
+
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(JettyServer.class);
 
     private static org.eclipse.jetty.server.Server server;
     public static HikariDataSource dataSource;
@@ -51,7 +56,7 @@ public class JettyServer {
         try {
             Thread.sleep(TIME_TO_STOP + 2000);
         } catch (InterruptedException ex) {
-            ex.printStackTrace();
+            log.error(ex.getMessage(), ex);
         }
         start();
 
@@ -60,15 +65,15 @@ public class JettyServer {
     private static void stop() {
 
         try {
-            System.out.println("Stopping....");
+            log.info("Stopping....");
             String urlString = "http://localhost:" + p("stopPort") + "/stop";
             URL url = new URL(urlString);
             URLConnection conn = url.openConnection();
             InputStream is = conn.getInputStream();
             is.close();
-            System.out.println("Stopped");
+            log.info("Stopped");
         } catch (Exception ex) {
-            ex.printStackTrace();
+            log.error(ex.getMessage(), ex);
         }
 
     }
@@ -77,13 +82,13 @@ public class JettyServer {
 
         server = new org.eclipse.jetty.server.Server();
 
-        configureDatabase();
+        dataSource = DbConfig.generateDataSource();
 
         createConnectors();
 
         WebAppContext appHandler = crateAppHandler();
 
-        SessionHandler sessionHandler = createSessionHandler();
+        SessionHandler sessionHandler = createSessionHandler(dataSource);
 
         appHandler.setSessionHandler(sessionHandler);
 
@@ -105,9 +110,9 @@ public class JettyServer {
             server.start();
             server.dumpStdErr();
             server.join();
-            System.out.println("finalling main");
+            log.info("finally main");
         } catch (Exception t) {
-            t.printStackTrace();
+            log.error("error inicializando servidor", t);
         } finally {
             internalStop();
 
@@ -129,19 +134,19 @@ public class JettyServer {
 
     }
 
-    private static SessionHandler createSessionHandler() {
+    private static SessionHandler createSessionHandler(HikariDataSource d) {
         //session in database
         final DefaultSessionIdManager idmgr = new DefaultSessionIdManager(server);
         idmgr.setServer(server);
         try {
-            idmgr.setWorkerName(InetAddress.getLocalHost().getHostAddress());
+            idmgr.setWorkerName(InetAddress.getLocalHost().getHostAddress().replace(".", "_"));
         } catch (Exception ex) {
-            ex.printStackTrace();
+            log.error(ex.getMessage(), ex);
         }
         server.setSessionIdManager(idmgr);
         JDBCSessionDataStore sessionStore = new JDBCSessionDataStore();
         DatabaseAdaptor databaseAdaptor = new DatabaseAdaptor();
-        databaseAdaptor.setDatasource(dataSource);
+        databaseAdaptor.setDatasource(d);
         sessionStore.setDatabaseAdaptor(databaseAdaptor);
         SessionHandler sessionHandler = new SessionHandler();
         DefaultSessionCache cacheSession = new DefaultSessionCache(sessionHandler);
@@ -156,19 +161,7 @@ public class JettyServer {
 
         WebAppContext appHandler = new WebAppContext();
         appHandler.setContextPath("/");
-        URL webAppDir = Thread.currentThread().getContextClassLoader().getResource("./");
-        if (webAppDir == null) {
-            throw new RuntimeException(String.format("No directory was found into the JAR file"));
-        }
-        try {
-            appHandler.setResourceBase(webAppDir.toURI().toString());
-        } catch (URISyntaxException ex) {
-            ex.printStackTrace();
-        }
-        appHandler.setParentLoaderPriority(true);
-        FilterHolder filter = appHandler.addFilter(org.javalite.activeweb.RequestDispatcher.class, p("dispacher.path"), EnumSet.of(DispatcherType.REQUEST));
-        filter.setInitParameter("exclusions", p("dispacher.exclusions"));
-        filter.setInitParameter("root_controller", p("dispacher.root_controller"));
+        appHandler.setResourceBase("src/main/webapp");
         appHandler.setVirtualHosts(new String[]{"@appConnector"});
 
         return appHandler;
@@ -183,38 +176,19 @@ public class JettyServer {
                 if (dataSource != null && !dataSource.isClosed()) {
                     dataSource.close();
                 }
-                System.out.println("finalled");
+                log.info("finalled");
             } catch (Exception ex) {
-                ex.printStackTrace();
+                log.error(ex.getMessage(), ex);
             }
 
         }
     }
 
-    private static void configureDatabase() {
-
-        //database access
-        HikariConfig config = new HikariConfig();
-        config.setJdbcUrl(p("dataSource.JdbcUrl"));
-        config.setUsername(p("dataSource.setUsername"));
-        config.setPassword(p("dataSource.setPassword"));
-        config.addDataSourceProperty("cachePrepStmts", p("dataSource.cachePrepStmts"));
-        config.addDataSourceProperty("prepStmtCacheSize", p("dataSource.prepStmtCacheSize"));
-        config.addDataSourceProperty("prepStmtCacheSqlLimit", p("dataSource.prepStmtCacheSqlLimit"));
-        config.addDataSourceProperty("useServerPrepStmts", p("dataSource.useServerPrepStmts"));
-        config.addDataSourceProperty("useLocalSessionState", p("dataSource.useLocalSessionState"));
-        config.addDataSourceProperty("useLocalTransactionState", p("dataSource.useLocalTransactionState"));
-        config.addDataSourceProperty("rewriteBatchedStatements", p("dataSource.rewriteBatchedStatements"));
-        config.addDataSourceProperty("cacheResultSetMetadata", p("dataSource.cacheResultSetMetadata"));
-        config.addDataSourceProperty("cacheServerConfiguration", p("dataSource.cacheServerConfiguration"));
-        config.addDataSourceProperty("elideSetAutoCommits", p("dataSource.elideSetAutoCommits"));
-        config.addDataSourceProperty("maintainTimeStats", p("dataSource.maintainTimeStats"));
-
-        dataSource = new HikariDataSource(config);
-    }
 }
 
 class StopHandler extends ContextHandler {
+
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(StopHandler.class);
 
     public StopHandler() {
     }
@@ -234,7 +208,7 @@ class StopHandler extends ContextHandler {
                 try {
                     JettyServer.internalStop();
                 } catch (Exception ex) {
-                    ex.printStackTrace();
+                    log.error(ex.getMessage(), ex);
                 }
             }
         }.start();

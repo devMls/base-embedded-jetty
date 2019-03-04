@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns="http://java.sun.com/xml/ns/javaee" version="2.5" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd">
+
+    <display-name>webapp</display-name>
+
+    <session-config>
+        <session-timeout>30</session-timeout>
+    </session-config>
+
+    <listener>
+        <listener-class>org.apache.shiro.web.env.EnvironmentLoaderListener</listener-class>
+    </listener>
+
+    <filter>
+        <filter-name>ShiroFilter</filter-name>
+        <filter-class>org.apache.shiro.web.servlet.ShiroFilter</filter-class>
+    </filter>
+
+    <filter-mapping>
+        <filter-name>ShiroFilter</filter-name>
+        <url-pattern>/*</url-pattern>
+        <dispatcher>REQUEST</dispatcher>
+        <dispatcher>FORWARD</dispatcher>
+        <dispatcher>INCLUDE</dispatcher>
+        <dispatcher>ERROR</dispatcher>
+    </filter-mapping>
+
+    <filter>
+        <filter-name>DispatcherToWebserviceNoApp</filter-name>
+        <filter-class>util.server.FiltersSpecial.DispatcherToWebserviceNoApp</filter-class>
+    </filter>
+    <filter-mapping>
+        <filter-name>DispatcherToWebserviceNoApp</filter-name>
+        <url-pattern>/*</url-pattern>
+    </filter-mapping>
+
+    <filter>
+        <filter-name>javaLiteDispatcher</filter-name>
+        <filter-class>org.javalite.activeweb.RequestDispatcher</filter-class>
+        <init-param>
+            <param-name>exclusions</param-name>
+            <param-value>css,images,js,ico</param-value>
+        </init-param>
+        <init-param>
+            <param-name>root_controller</param-name>
+            <param-value>home</param-value>
+        </init-param>
+    </filter>
+
+    <filter-mapping>
+        <filter-name>javaLiteDispatcher</filter-name>
+        <url-pattern>/*</url-pattern>
+    </filter-mapping>
+
+</web-app>
