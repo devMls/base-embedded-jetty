@@ -13,42 +13,78 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.apache.shiro.SecurityUtils;
 import org.apache.shiro.subject.Subject;
-import org.javalite.activejdbc.Model;
 import org.javalite.activeweb.AppController;
 
 /**
- *
- * @author miguel
+
+ @author miguel
  */
-public class ControllerGenerico extends AppController {
+public abstract class ControllerGenerico extends AppController {
 
-    public void respondJson(Object objeto) {
-
-        respond(UtilConverter.toJson(objeto)).contentType("text/json")
+    private void respondJsonInternal(String s) {
+        respond(s).contentType("text/json")
                 .header("Access-Control-Allow-Origin", "*")
                 .status(200);
     }
 
-    public List<Model> getModelFromParameter(String param, Class c) {
+    protected void respondJson(Object objeto) {
 
-        Map<String, List<String>> collect = params().entrySet().stream()
-                .filter(x -> x.getKey().startsWith(param + "."))
-                .collect(Collectors.toMap(x -> x.getKey().replaceFirst(param + ".", ""), x -> Arrays.asList(x.getValue())));
+        respondJsonInternal(UtilConverter.toJson(objeto));
+    }
 
-        String[] keySet = (String[]) collect.keySet().toArray();
+
+    protected void respondOk(String... objeto) {
+
+        String resultado = objeto[0];
+
+        for (int i = 1; i < objeto.length; i++) {
+            resultado = resultado + "," + objeto[i];
+        }
+
+        respond(resultado).status(200);
+
+    }
+    protected void respondOk(Integer i) {
+
+        respondOk(i.toString());
+
+    }
+    protected void respondError(String... objeto) {
+        String resultado = objeto[0];
+
+        for (int i = 1; i < objeto.length; i++) {
+            resultado = resultado + "," + objeto[i];
+        }
+
+        respond(resultado).status(500);
+
+    }
+
+    protected <T extends ModeloGenerico> List<T> getModelFromParameter(String param, Class<T> c) {
+        Map<String, List<String>> collect = null;
+        try {
+            collect = params().entrySet().stream()
+                    .filter(x -> x.getKey().startsWith(param + "["))
+                    .collect(Collectors.toMap(x -> x.getKey().replaceFirst(param + "\\[", "").replaceFirst("\\]", ""), x -> Arrays.asList(x.getValue())));
+        } catch (Exception e) {
+            collect = params().entrySet().stream()
+                    .filter(x -> x.getKey().startsWith(param + "["))
+                    .collect(Collectors.toMap(x -> x.getKey().replaceFirst(param + "\\[", "").replaceFirst("\\]", ""), x -> Arrays.asList(x.getValue())));
+        }
+        Object[] keySet = (Object[]) collect.keySet().toArray();
 
         int size = collect.get(keySet[0]).size();
 
         Map<String, String> entrada = new HashMap();
 
-        List<Model> lista = new ArrayList<>();
+        List<T> lista = new ArrayList<T>();
 
         for (int i = 0; i < size; i++) {
-            for (String k : keySet) {
-                entrada.put(k, collect.get(k).get(i));
+            for (Object k : keySet) {
+                entrada.put((String) k, collect.get(k).get(i));
             }
             try {
-                Model m = (Model) c.getDeclaredConstructor().newInstance();
+                T m = c.getDeclaredConstructor().newInstance();
                 m.fromMap(entrada);
                 lista.add(m);
             } catch (Exception e) {
@@ -60,7 +96,7 @@ public class ControllerGenerico extends AppController {
 
     }
 
-    public Subject sessionShiro() {
+    protected Subject sessionShiro() {
 
         return SecurityUtils.getSubject();
 
