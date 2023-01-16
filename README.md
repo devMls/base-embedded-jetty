@@ -1,4 +1,4 @@
-# base embedded jetty
+# base embedded jetty (belogic repository in bitbucket is more advanced)
 javalite activeweb in a embedded jetty example
 
 
